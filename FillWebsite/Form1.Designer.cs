@@ -29,6 +29,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.label6 = new System.Windows.Forms.Label();
             this.excelModelBtn = new System.Windows.Forms.Button();
             this.stopBtn1 = new System.Windows.Forms.Button();
             this.processLabel1 = new System.Windows.Forms.Label();
@@ -47,7 +48,9 @@
             this.cookieText = new System.Windows.Forms.TextBox();
             this.howToGetCookieBtn = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.pageText = new System.Windows.Forms.TextBox();
             this.tabControl.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -73,7 +76,7 @@
             // 
             // doBtn1
             // 
-            this.doBtn1.Location = new System.Drawing.Point(152, 93);
+            this.doBtn1.Location = new System.Drawing.Point(152, 115);
             this.doBtn1.Name = "doBtn1";
             this.doBtn1.Size = new System.Drawing.Size(96, 30);
             this.doBtn1.TabIndex = 3;
@@ -98,12 +101,15 @@
             this.tabControl.Location = new System.Drawing.Point(0, 102);
             this.tabControl.Name = "tabControl";
             this.tabControl.SelectedIndex = 0;
-            this.tabControl.Size = new System.Drawing.Size(587, 207);
+            this.tabControl.Size = new System.Drawing.Size(587, 227);
             this.tabControl.TabIndex = 13;
             // 
             // tabPage1
             // 
             this.tabPage1.BackColor = System.Drawing.SystemColors.Control;
+            this.tabPage1.Controls.Add(this.pageText);
+            this.tabPage1.Controls.Add(this.label8);
+            this.tabPage1.Controls.Add(this.label7);
             this.tabPage1.Controls.Add(this.label6);
             this.tabPage1.Controls.Add(this.excelModelBtn);
             this.tabPage1.Controls.Add(this.stopBtn1);
@@ -115,9 +121,19 @@
             this.tabPage1.Location = new System.Drawing.Point(4, 25);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(579, 178);
+            this.tabPage1.Size = new System.Drawing.Size(579, 198);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "填写评价";
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.ForeColor = System.Drawing.Color.Red;
+            this.label6.Location = new System.Drawing.Point(249, 161);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(292, 15);
+            this.label6.TabIndex = 14;
+            this.label6.Text = "再次运行前请务必删除已完成填写的行！！";
             // 
             // excelModelBtn
             // 
@@ -132,7 +148,7 @@
             // stopBtn1
             // 
             this.stopBtn1.Enabled = false;
-            this.stopBtn1.Location = new System.Drawing.Point(293, 93);
+            this.stopBtn1.Location = new System.Drawing.Point(293, 115);
             this.stopBtn1.Name = "stopBtn1";
             this.stopBtn1.Size = new System.Drawing.Size(96, 30);
             this.stopBtn1.TabIndex = 11;
@@ -144,7 +160,7 @@
             // 
             this.processLabel1.AutoSize = true;
             this.processLabel1.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.processLabel1.Location = new System.Drawing.Point(67, 139);
+            this.processLabel1.Location = new System.Drawing.Point(67, 161);
             this.processLabel1.Name = "processLabel1";
             this.processLabel1.Size = new System.Drawing.Size(52, 15);
             this.processLabel1.TabIndex = 10;
@@ -163,7 +179,7 @@
             this.tabPage2.Location = new System.Drawing.Point(4, 25);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(579, 178);
+            this.tabPage2.Size = new System.Drawing.Size(579, 209);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "获取订单号";
             // 
@@ -310,21 +326,38 @@
             this.label1.TabIndex = 9;
             this.label1.Text = "请输入Cookie";
             // 
-            // label6
+            // label7
             // 
-            this.label6.AutoSize = true;
-            this.label6.ForeColor = System.Drawing.Color.Red;
-            this.label6.Location = new System.Drawing.Point(249, 139);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(292, 15);
-            this.label6.TabIndex = 14;
-            this.label6.Text = "再次运行前请务必删除已完成填写的行！！";
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(100, 83);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(22, 15);
+            this.label7.TabIndex = 15;
+            this.label7.Text = "从";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(148, 83);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(181, 15);
+            this.label8.TabIndex = 16;
+            this.label8.Text = "页往前填写(0表示末尾页)";
+            // 
+            // pageText
+            // 
+            this.pageText.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.pageText.Location = new System.Drawing.Point(123, 81);
+            this.pageText.Name = "pageText";
+            this.pageText.Size = new System.Drawing.Size(21, 18);
+            this.pageText.TabIndex = 17;
+            this.pageText.Text = "0";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(587, 309);
+            this.ClientSize = new System.Drawing.Size(587, 329);
             this.Controls.Add(this.tabControl);
             this.Controls.Add(this.panel2);
             this.Name = "Form1";
@@ -367,6 +400,9 @@
         private System.Windows.Forms.ComboBox siteText;
         private System.Windows.Forms.Button excelModelBtn;
         private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.TextBox pageText;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Label label7;
     }
 }
 

@@ -96,6 +96,14 @@ namespace FillWebsite {
                 else
                     return;
             }
+            if (pageText.Text == "")
+                pageText.Text = "0";
+            var curPage = 0;
+            if(!int.TryParse(pageText.Text,out curPage)){
+                MessageBox.Show("页数只能填写数字。");
+                return;
+            }
+            curPage = curPage < 0 ? 0 : curPage;
             //从cookie解析xsrf-token
             var xsrfStartIndex = cookie.IndexOf("XSRF-TOKEN=") + "XSRF-TOKEN=".Length;
             if (xsrfStartIndex >= cookie.Length) {
@@ -111,7 +119,7 @@ namespace FillWebsite {
             this.selectSavePathBtn.Enabled = false;
             this.stopBtn1.Enabled = true;
             this.isStop = false;
-            Task task = new Task(() => fillWebsite(path, savePath, cookie, xsrfToken));
+            Task task = new Task(() => fillWebsite(path, savePath, cookie, xsrfToken, curPage));
             task.Start();
         }
         private void stopBtn1_Click(object sender, EventArgs e) {
@@ -192,7 +200,9 @@ namespace FillWebsite {
         /// <param name="path"></param>
         /// <param name="cookie"></param>
         /// <param name="xsrfToken"></param>
-        private void fillWebsite (string path, string savePath, string cookie, string xsrfToken) {
+        /// <param name="curPage">从第几页开始往前填，0表示从末尾页</param>
+        private void fillWebsite (string path, string savePath, string cookie, string xsrfToken, int curPage) {
+            curPage++;
             //结果保存excel
             wbSave = excelApp.Workbooks.Add();
             var wsSave = (Excel.Worksheet)wbSave.Worksheets[1];
@@ -207,7 +217,6 @@ namespace FillWebsite {
             wbRead = excelApp.Workbooks.Open(path);
             var wsRead = (Excel.Worksheet)wbRead.Worksheets[1];
             int curRow = 2; //去除表头，从第二行开始
-            int curPage = 1;
             try {
                 var rowCount = wsRead.UsedRange.Rows.Count;
                 //循环行
@@ -242,13 +251,14 @@ namespace FillWebsite {
                             }
                             lastAsin = asin;
                             lastSite = site;
-                            curPage = 0;
                             idStack.Clear();
                             orderNoStack.Clear();
                             //获取总页数
                             var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie);
                             var pageLiSet = htmlDoc.DocumentNode.SelectNodes("//ul[@class='pagination']/li");
-                            curPage = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText)+1;
+                            var pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText)+1;
+                            if (curPage > pageCount || curPage <= 0)
+                                curPage = pageCount;
                         }
                         while (idStack.Count <= 0) { //请求下一页商品
                             if (curPage <= 1) {
@@ -290,9 +300,16 @@ namespace FillWebsite {
                         request.Headers.Add("X-Requested-With", "XMLHttpRequest");
                         request.ContentType = "application/json;charset=UTF-8";
                         request.Accept = "application/json, text/plain, */*";
-                        string requestStr = "{\"id\":" + idStack.Pop() + ",\"star\":5,"
-                            + "\"title\":\"" + title + "\","
-                            + "\"content\":\"" + content + "\","
+                        var id = idStack.Pop();
+                        var titleNoTrans = title.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\t", "\\t").Replace("\v", "\\v")
+                            .Replace("\'", "\\'").Replace("\"", "\\\"").Replace("\0", "\\0")
+                            .Replace("\a", "\\a").Replace("\b", "\\b").Replace("\r", "\\r").Replace("\f", "\\f");
+                        var contentNoTrans = content.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\t", "\\t").Replace("\v", "\\v")
+                            .Replace("\'", "\\'").Replace("\"", "\\\"").Replace("\0", "\\0")
+                            .Replace("\a", "\\a").Replace("\b", "\\b").Replace("\r", "\\r").Replace("\f", "\\f");
+                        string requestStr = "{\"id\":" + id + ",\"star\":5,"
+                            + "\"title\":\"" + titleNoTrans + "\","
+                            + "\"content\":\"" + contentNoTrans + "\","
                             + "\"epic\":[],\"evideo\":[]}";
                         byte[] buffer = utf8.GetBytes(requestStr.ToString());
                         request.ContentLength = buffer.Length;
@@ -325,7 +342,7 @@ namespace FillWebsite {
                 //    wsSave.Cells[saveRowIndex, 1] = "还有未评价的订单。excel第" + curRow + "行。订单第" + curPage + "页。";
                 //}
                 MessageBox.Show("填写完毕！\n结果保存在" + savePath);
-            } catch (WebException) {
+            } catch (WebException ex) {
                 MessageBox.Show("cookie已失效或网站服务器拒绝访问，请重新输入cookie。\n"
                     + "当前excel第" + curRow + "行。\n"
                     + "当前订单第" + curPage + "页。\n\n"
