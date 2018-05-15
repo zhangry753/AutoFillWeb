@@ -98,12 +98,12 @@ namespace FillWebsite {
             }
             if (pageText.Text == "")
                 pageText.Text = "0";
-            var curPage = 0;
-            if(!int.TryParse(pageText.Text,out curPage)){
+            var initPage = 0;
+            if(!int.TryParse(pageText.Text,out initPage)){
                 MessageBox.Show("页数只能填写数字。");
                 return;
             }
-            curPage = curPage < 0 ? 0 : curPage;
+            initPage = initPage < 0 ? 0 : initPage;
             //从cookie解析xsrf-token
             var xsrfStartIndex = cookie.IndexOf("XSRF-TOKEN=") + "XSRF-TOKEN=".Length;
             if (xsrfStartIndex >= cookie.Length) {
@@ -119,7 +119,7 @@ namespace FillWebsite {
             this.selectSavePathBtn.Enabled = false;
             this.stopBtn1.Enabled = true;
             this.isStop = false;
-            Task task = new Task(() => fillWebsite(path, savePath, cookie, xsrfToken, curPage));
+            Task task = new Task(() => fillWebsite(path, savePath, cookie, xsrfToken, initPage));
             task.Start();
         }
         private void stopBtn1_Click(object sender, EventArgs e) {
@@ -157,7 +157,15 @@ namespace FillWebsite {
                     } else
                     return;
             }
-            if(asin == "") {
+            if (pageText.Text == "")
+                pageText.Text = "0";
+            var initPage = 0;
+            if (!int.TryParse(pageText.Text, out initPage)) {
+                MessageBox.Show("页数只能填写数字。");
+                return;
+            }
+            initPage = initPage < 0 ? 0 : initPage;
+            if (asin == "") {
                 MessageBox.Show("请填写ASIN");
                 return;
             }
@@ -167,7 +175,7 @@ namespace FillWebsite {
             this.selectSavePathBtn.Enabled = false;
             this.stopBtn2.Enabled = true;
             this.isStop = false;
-            Task task = new Task(() => getAllOrderId(savePath, cookie, asin, site));
+            Task task = new Task(() => getAllOrderId(savePath, cookie, asin, site, initPage));
             task.Start();
 
         }
@@ -200,23 +208,22 @@ namespace FillWebsite {
         /// <param name="path"></param>
         /// <param name="cookie"></param>
         /// <param name="xsrfToken"></param>
-        /// <param name="curPage">从第几页开始往前填，0表示从末尾页</param>
-        private void fillWebsite (string path, string savePath, string cookie, string xsrfToken, int curPage) {
-            curPage++;
+        /// <param name="initPage">从第几页开始往前填，0表示从末尾页</param>
+        private void fillWebsite (string path, string savePath, string cookie, string xsrfToken, int initPage) {
             //结果保存excel
             wbSave = excelApp.Workbooks.Add();
             var wsSave = (Excel.Worksheet)wbSave.Worksheets[1];
-            int saveRowIndex = 1;
-            wsSave.Cells[saveRowIndex, 1] = "订单号";
-            wsSave.Cells[saveRowIndex, 2] = "asin";
-            wsSave.Cells[saveRowIndex, 3] = "国家";
-            wsSave.Cells[saveRowIndex, 4] = "评价标题";
-            wsSave.Cells[saveRowIndex, 5] = "评价内容";
-            saveRowIndex++;
+            wsSave.Cells[1, 1] = "订单号";
+            wsSave.Cells[1, 2] = "asin";
+            wsSave.Cells[1, 3] = "国家";
+            wsSave.Cells[1, 4] = "评价标题";
+            wsSave.Cells[1, 5] = "评价内容";
+            wsSave.Cells[1, 6] = "备注(错误信息)";
             //读取excel
             wbRead = excelApp.Workbooks.Open(path);
             var wsRead = (Excel.Worksheet)wbRead.Worksheets[1];
-            int curRow = 2; //去除表头，从第二行开始
+            int curRow = 2; //去除表头，从第二行开始读取
+            int curPage = 0;
             try {
                 var rowCount = wsRead.UsedRange.Rows.Count;
                 //循环行
@@ -225,8 +232,7 @@ namespace FillWebsite {
                 Stack<string> idStack = new Stack<string>();
                 Stack<string> orderNoStack = new Stack<string>();
                 string csrfToken = "";
-                for (; curRow <= rowCount; curRow++)
-                {
+                for (int saveRowIndex=2; curRow <= rowCount; curRow++,saveRowIndex++) {
                     if (isStop) {
                         MessageBox.Show("停止填写。\n"
                                     + "当前excel第" + curRow + "行。\n"
@@ -234,20 +240,29 @@ namespace FillWebsite {
                         this.Invoke(new Action(() => processLabel1.Text = "进度：" + (curRow-1) + "/" + rowCount));
                         return;
                     }
-                    if (wsRead.Cells[curRow, 1].Value2 != null) {
+                    if (wsRead.Cells[curRow, 1].Value2 != null) { //按第一列是否有内容判断空行
                         string asin = wsRead.Cells[curRow, 1].Value2.ToString();
                         string site = wsRead.Cells[curRow, 2].Value2.ToString();
                         string title = wsRead.Cells[curRow, 3].Value2.ToString();
                         string content = wsRead.Cells[curRow, 4].Value2.ToString();
+                        wsSave.Cells[saveRowIndex, 2] = asin;
+                        wsSave.Cells[saveRowIndex, 3] = site;
+                        wsSave.Cells[saveRowIndex, 4] = title;
+                        wsSave.Cells[saveRowIndex, 5] = content;
+                        if (asin.Trim() == "") {
+                            wsSave.Cells[saveRowIndex, 6] = "asin不可为空。";
+                            wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
+                            continue;
+                        }
                         if (!siteMap.Keys.Contains(site)) {
-                            MessageBox.Show("未找到“"+site+"”国家选项。\nexcel第" + curRow + "行。");
-                            return;
+                            wsSave.Cells[saveRowIndex, 6] = "未找到“" + site + "”国家选项。";
+                            wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
+                            continue;
                         }
                         if (asin != lastAsin || site != lastSite) { //如果为新的商品
                             if (idStack.Count > 0 || curPage > 1) { //网页上还有未评价的订单
-                                //wsSave.Range[wsSave.Cells[saveRowIndex, 1], wsSave.Cells[saveRowIndex, 5]].Merge(0);
-                                //wsSave.Cells[saveRowIndex, 1] = "还有未评价的订单。excel第" + curRow + "行。订单第" + curPage + "页。";
-                                //saveRowIndex++;
+                                //wsSave.Cells[saveRowIndex, 6] = "页面上还有未评价的订单。订单第" + curPage + "页。";
+                                //wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
                             }
                             lastAsin = asin;
                             lastSite = site;
@@ -257,8 +272,10 @@ namespace FillWebsite {
                             var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie);
                             var pageLiSet = htmlDoc.DocumentNode.SelectNodes("//ul[@class='pagination']/li");
                             var pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText)+1;
-                            if (curPage > pageCount || curPage <= 0)
+                            if (initPage > pageCount || initPage <= 0)
                                 curPage = pageCount;
+                            else
+                                curPage = initPage + 1;
                         }
                         while (idStack.Count <= 0) { //请求下一页商品
                             if (curPage <= 1) {
@@ -270,13 +287,14 @@ namespace FillWebsite {
                             var productTrSet = htmlDoc.DocumentNode.SelectNodes("//tbody/tr");
                             foreach (var productTr in productTrSet) {
                                 var productTdSet = productTr.SelectNodes("./td");
-                                if (productTdSet[6].InnerText.Contains("成功送达") || productTdSet[6].InnerText.Contains("准备发货中")) { //判断是否成功送达，第7列为订单状态
+                                var orderNo = productTdSet[3].InnerText.Trim(); //第4列为订单号
+                                if(orderNo != "") { 
                                     var button = productTr.SelectSingleNode(".//i-button");
                                     var clickMethod = button.GetAttributeValue("@click", "");
                                     if (clickMethod.StartsWith("initForm")) {
-                                        if (button.InnerText == "爱心捐赠感言") { //判断是否为填写评价
+                                        if (button.InnerText == "爱心捐赠感言") { //判断是否已填写过评价
                                             idStack.Push(clickMethod.Substring("initForm('formValidate',".Length, 7));
-                                            orderNoStack.Push(productTdSet[3].InnerText);
+                                            orderNoStack.Push(orderNo);
                                         }
                                     }
                                 }
@@ -289,6 +307,7 @@ namespace FillWebsite {
                             }
                             csrfToken = csrfMeta.GetAttributeValue("content", "");
                         }
+                        wsSave.Cells[saveRowIndex, 1] = orderNoStack.Pop();
                         //填写评价
                         string url = "http://www.dagobuy.com/evaluate";
                         var utf8 = Encoding.UTF8;
@@ -301,45 +320,52 @@ namespace FillWebsite {
                         request.ContentType = "application/json;charset=UTF-8";
                         request.Accept = "application/json, text/plain, */*";
                         var id = idStack.Pop();
-                        var titleNoTrans = title.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\t", "\\t").Replace("\v", "\\v")
-                            .Replace("\'", "\\'").Replace("\"", "\\\"").Replace("\0", "\\0")
+                        var titleNoTrans = title.Replace("\\", "\\\\").Replace("\t", "\\t").Replace("\v", "\\v")
+                            .Replace("\n", "\\n").Replace("\"", "\\\"").Replace("\0", "\\0")
                             .Replace("\a", "\\a").Replace("\b", "\\b").Replace("\r", "\\r").Replace("\f", "\\f");
-                        var contentNoTrans = content.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\t", "\\t").Replace("\v", "\\v")
-                            .Replace("\'", "\\'").Replace("\"", "\\\"").Replace("\0", "\\0")
+                        var contentNoTrans = content.Replace("\\", "\\\\").Replace("\t", "\\t").Replace("\v", "\\v")
+                            .Replace("\n", "\\n").Replace("\"", "\\\"").Replace("\0", "\\0")
                             .Replace("\a", "\\a").Replace("\b", "\\b").Replace("\r", "\\r").Replace("\f", "\\f");
-                        string requestStr = "{\"id\":" + id + ",\"star\":5,"
+                        string requestStr = "{\"id\":1513826" + ",\"star\":5,"
                             + "\"title\":\"" + titleNoTrans + "\","
                             + "\"content\":\"" + contentNoTrans + "\","
                             + "\"epic\":[],\"evideo\":[]}";
                         byte[] buffer = utf8.GetBytes(requestStr.ToString());
                         request.ContentLength = buffer.Length;
                         request.GetRequestStream().Write(buffer, 0, buffer.Length);
-                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-                        string result = "";
-                        using (StreamReader reader = new StreamReader(response.GetResponseStream(), utf8)) {
-                            result = reader.ReadToEnd();
+                        try {
+                            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                            string result = "";
+                            using (StreamReader reader = new StreamReader(response.GetResponseStream(), utf8)) {
+                                result = reader.ReadToEnd();
+                            }
+                            response.Close();
+                            var json = (JObject)JsonConvert.DeserializeObject(result);
+                            var resultMsg = json.GetValue("msg").ToString();
+                            if (resultMsg != "ok") {
+                                wsSave.Cells[saveRowIndex, 6] = "订单评价不成功。" + Uri.UnescapeDataString(resultMsg) + "。订单第" + curPage + "页。";
+                                wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
+                            }
+                        } catch (WebException e) {
+                            if (e.Message.Contains("500")) { //request格式有误，一般是评价字符串处理出错
+                                wsSave.Cells[saveRowIndex, 6] = "评价内容无法处理。订单第" + curPage + "页。";
+                                wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
+                            } else {
+                                MessageBox.Show("cookie已失效或网站服务器拒绝访问，请重新输入cookie。\n"
+                                    + "当前excel第" + curRow + "行。\n"
+                                    + "当前订单第" + curPage + "页。\n\n"
+                                    + "重新运行前请删除excel中做完的填写！！");
+                                return;
+                            }
+                        } finally {
+                            request.Abort();
                         }
-                        response.Close();
-                        request.Abort();
-                        var json = (JObject)JsonConvert.DeserializeObject(result);
-                        if (json.GetValue("msg").ToString() == "ok") {
-                            this.Invoke(new Action(() => processLabel1.Text = "进度：" + curRow + "/" + rowCount));
-                            wsSave.Cells[saveRowIndex, 1] = orderNoStack.Pop();
-                            wsSave.Cells[saveRowIndex, 2] = asin;
-                            wsSave.Cells[saveRowIndex, 3] = site;
-                            wsSave.Cells[saveRowIndex, 4] = title;
-                            wsSave.Cells[saveRowIndex, 5] = content;
-                            saveRowIndex++;
-                        } else {
-                            wsSave.Range[wsSave.Cells[saveRowIndex, 1], wsSave.Cells[saveRowIndex, 5]].Merge(0);
-                            wsSave.Cells[saveRowIndex, 1] = "订单评价不成功。" + Uri.UnescapeDataString(json.GetValue("msg").ToString()) + "。excel第" + curRow + "行。订单第" + curPage + "页。";
-                            saveRowIndex++;
-                        }
+                        this.Invoke(new Action(() => processLabel1.Text = "进度：" + curRow + "/" + rowCount));
                     }
                 }
                 //if (idStack.Count > 0 || curPage > 1) { //网页上还有未评价的订单
-                //    wsSave.Range[wsSave.Cells[saveRowIndex, 1], wsSave.Cells[saveRowIndex, 5]].Merge(0);
-                //    wsSave.Cells[saveRowIndex, 1] = "还有未评价的订单。excel第" + curRow + "行。订单第" + curPage + "页。";
+                //    wsSave.Cells[saveRowIndex, 6] = "页面上还有未评价的订单。订单第" + curPage + "页。";
+                //    wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
                 //}
                 MessageBox.Show("填写完毕！\n结果保存在" + savePath);
             } catch (WebException ex) {
@@ -348,7 +374,7 @@ namespace FillWebsite {
                     + "当前订单第" + curPage + "页。\n\n"
                     + "重新运行前请删除excel中做完的填写！！");
             } catch (NullReferenceException e) {
-                MessageBox.Show("页面为空，无订单。是不是asin或者国家填错了？\n"+ "当前excel第" + curRow + "行。");
+                MessageBox.Show("页面为空，无订单。是不是asin或者国家填错了？\n"+ "当前excel第" + curRow + "行。\n\n订单只有一页时本软件不可用");
             } catch (Exception ex) {
                 MessageBox.Show(ex.Message, "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } finally {
@@ -376,19 +402,23 @@ namespace FillWebsite {
         /// <param name="cookie"></param>
         /// <param name="asin"></param>
         /// <param name="site">国家</param>
-        private void getAllOrderId (string savePath, string cookie, string asin, string site) {
+        private void getAllOrderId (string savePath, string cookie, string asin, string site, int initPage) {
             //结果保存excel
             wbSave = excelApp.Workbooks.Add();
             var wsSave = (Excel.Worksheet)wbSave.Worksheets[1];
             int saveRowIndex = 1;
             wsSave.Cells[saveRowIndex, 1] = "订单号";
             saveRowIndex++;
+            int curPage = 0;
             try {
                 //获取总页数
                 var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie);
                 var pageLiSet = htmlDoc.DocumentNode.SelectNodes("//ul[@class='pagination']/li");
                 var pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText);
-                var curPage = pageCount;
+                if (initPage > pageCount || initPage <= 0)
+                    curPage = pageCount;
+                else
+                    curPage = initPage;
                 //倒序获取订单号
                 for (; curPage >= 1; curPage--) {
                     if (isStop) {
@@ -413,7 +443,7 @@ namespace FillWebsite {
             } catch (WebException) {
                 MessageBox.Show("cookie已失效或网站服务器拒绝访问，请重新输入cookie。");
             } catch(NullReferenceException e) {
-                MessageBox.Show("页面为空，无订单。是不是asin或者国家填错了？");
+                MessageBox.Show("页面为空，无订单。是不是asin或者国家填错了？\n\n订单只有一页时本软件不可用");
             } catch (Exception ex) {
                 MessageBox.Show(ex.Message, "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } finally {
