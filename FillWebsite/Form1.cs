@@ -232,12 +232,12 @@ namespace FillWebsite {
                 Stack<string> idStack = new Stack<string>();
                 Stack<string> orderNoStack = new Stack<string>();
                 string csrfToken = "";
-                for (int saveRowIndex=2; curRow <= rowCount; curRow++,saveRowIndex++) {
+                for (int saveRowIndex = 2; curRow <= rowCount; curRow++, saveRowIndex++) {
                     if (isStop) {
                         MessageBox.Show("停止填写。\n"
                                     + "当前excel第" + curRow + "行。\n"
                                     + "当前订单第" + curPage + "页。");
-                        this.Invoke(new Action(() => processLabel1.Text = "进度：" + (curRow-1) + "/" + rowCount));
+                        this.Invoke(new Action(() => processLabel1.Text = "进度：" + (curRow - 1) + "/" + rowCount));
                         return;
                     }
                     if (wsRead.Cells[curRow, 1].Value2 != null) { //按第一列是否有内容判断空行
@@ -291,7 +291,7 @@ namespace FillWebsite {
                             foreach (var productTr in productTrSet) {
                                 var productTdSet = productTr.SelectNodes("./td");
                                 var orderNo = productTdSet[3].InnerText.Trim(); //第4列为订单号
-                                if(orderNo != "") { 
+                                if (orderNo != "") {
                                     var button = productTr.SelectSingleNode(".//i-button");
                                     var clickMethod = button.GetAttributeValue("@click", "");
                                     if (clickMethod.StartsWith("initForm")) {
@@ -377,6 +377,8 @@ namespace FillWebsite {
                     + "当前excel第" + curRow + "行。\n"
                     + "当前订单第" + curPage + "页。\n\n"
                     + "重新运行前请删除excel中做完的填写！！");
+            } catch (NullReferenceException e) {
+                MessageBox.Show("空指针错误，一般是因为网站样式改变了，本软件已失效。", "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } catch (Exception ex) {
                 MessageBox.Show(ex.Message, "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } finally {
@@ -389,7 +391,7 @@ namespace FillWebsite {
                 }));
                 if (wbSave != null) {
                     wbSave.Close(true, savePath);
-                } 
+                }
                 if (wbRead != null)
                     wbRead.Close(false);
                 excelApp.Quit();
@@ -447,6 +449,8 @@ namespace FillWebsite {
                 MessageBox.Show("订单号获取完毕！\n结果保存在" + savePath);
             } catch (WebException) {
                 MessageBox.Show("cookie已失效或网站服务器拒绝访问，请重新输入cookie。");
+            } catch (NullReferenceException e) {
+                MessageBox.Show("空指针错误，一般是因为网站样式改变了，本软件已失效。", "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } catch (Exception ex) {
                 MessageBox.Show(ex.Message, "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } finally {
