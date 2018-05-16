@@ -260,7 +260,7 @@ namespace FillWebsite {
                             continue;
                         }
                         if (asin != lastAsin || site != lastSite) { //如果为新的商品
-                            if (idStack.Count > 0 || curPage > 1) { //网页上还有未评价的订单
+                            if (idStack.Count > 0 || curPage >= 1) { //网页上还有未评价的订单
                                 //wsSave.Cells[saveRowIndex, 6] = "页面上还有未评价的订单。订单第" + curPage + "页。";
                                 //wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
                             }
@@ -269,20 +269,23 @@ namespace FillWebsite {
                             idStack.Clear();
                             orderNoStack.Clear();
                             //获取总页数
+                            var pageCount = 1;
                             var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie);
                             var pageLiSet = htmlDoc.DocumentNode.SelectNodes("//ul[@class='pagination']/li");
-                            var pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText)+1;
+                            if (pageLiSet != null) { //只有一页时没有翻页按钮
+                                pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText) + 1;
+                            }
                             if (initPage > pageCount || initPage <= 0)
                                 curPage = pageCount;
                             else
-                                curPage = initPage + 1;
+                                curPage = initPage;
                         }
                         while (idStack.Count <= 0) { //请求下一页商品
-                            if (curPage <= 1) {
+                            if (curPage < 1) {
                                 MessageBox.Show("已填到最新订单，但excel中还有多余的行。\nexcel第" + curRow + "行。");
                                 return;
                             }
-                            var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie, --curPage);
+                            var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie, curPage);
                             //获取产品id，从button的方法中提取，initForm('formValidate',1362958)
                             var productTrSet = htmlDoc.DocumentNode.SelectNodes("//tbody/tr");
                             foreach (var productTr in productTrSet) {
@@ -361,6 +364,7 @@ namespace FillWebsite {
                             request.Abort();
                         }
                         this.Invoke(new Action(() => processLabel1.Text = "进度：" + curRow + "/" + rowCount));
+                        curPage--;
                     }
                 }
                 //if (idStack.Count > 0 || curPage > 1) { //网页上还有未评价的订单
@@ -373,8 +377,6 @@ namespace FillWebsite {
                     + "当前excel第" + curRow + "行。\n"
                     + "当前订单第" + curPage + "页。\n\n"
                     + "重新运行前请删除excel中做完的填写！！");
-            } catch (NullReferenceException e) {
-                MessageBox.Show("页面为空，无订单。是不是asin或者国家填错了？\n"+ "当前excel第" + curRow + "行。\n\n订单只有一页时本软件不可用");
             } catch (Exception ex) {
                 MessageBox.Show(ex.Message, "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } finally {
@@ -412,9 +414,12 @@ namespace FillWebsite {
             int curPage = 0;
             try {
                 //获取总页数
+                var pageCount = 1;
                 var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie);
                 var pageLiSet = htmlDoc.DocumentNode.SelectNodes("//ul[@class='pagination']/li");
-                var pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText);
+                if (pageLiSet != null) { //只有一页时没有翻页按钮
+                    pageCount = int.Parse(pageLiSet[pageLiSet.Count - 2].InnerText) + 1;
+                }
                 if (initPage > pageCount || initPage <= 0)
                     curPage = pageCount;
                 else
@@ -442,8 +447,6 @@ namespace FillWebsite {
                 MessageBox.Show("订单号获取完毕！\n结果保存在" + savePath);
             } catch (WebException) {
                 MessageBox.Show("cookie已失效或网站服务器拒绝访问，请重新输入cookie。");
-            } catch(NullReferenceException e) {
-                MessageBox.Show("页面为空，无订单。是不是asin或者国家填错了？\n\n订单只有一页时本软件不可用");
             } catch (Exception ex) {
                 MessageBox.Show(ex.Message, "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } finally {
