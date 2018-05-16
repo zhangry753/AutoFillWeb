@@ -260,7 +260,7 @@ namespace FillWebsite {
                             continue;
                         }
                         if (asin != lastAsin || site != lastSite) { //如果为新的商品
-                            if (idStack.Count > 0 || curPage >= 1) { //网页上还有未评价的订单
+                            if (idStack.Count > 0 || curPage > 1) { //网页上还有未评价的订单
                                 //wsSave.Cells[saveRowIndex, 6] = "页面上还有未评价的订单。订单第" + curPage + "页。";
                                 //wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
                             }
@@ -269,7 +269,7 @@ namespace FillWebsite {
                             idStack.Clear();
                             orderNoStack.Clear();
                             //获取总页数
-                            var pageCount = 1;
+                            var pageCount = 2;
                             var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie);
                             var pageLiSet = htmlDoc.DocumentNode.SelectNodes("//ul[@class='pagination']/li");
                             if (pageLiSet != null) { //只有一页时没有翻页按钮
@@ -278,26 +278,29 @@ namespace FillWebsite {
                             if (initPage > pageCount || initPage <= 0)
                                 curPage = pageCount;
                             else
-                                curPage = initPage;
+                                curPage = initPage + 1;
                         }
                         while (idStack.Count <= 0) { //请求下一页商品
-                            if (curPage < 1) {
-                                MessageBox.Show("已填到最新订单，但excel中还有多余的行。\nexcel第" + curRow + "行。");
-                                return;
+                            if (curPage <= 1) {
+                                wsSave.Cells[saveRowIndex, 6] = "找不到订单。";
+                                wsSave.Cells[saveRowIndex, 1].Interior.Color = Color.Red;
+                                break;
                             }
-                            var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie, curPage);
-                            //获取产品id，从button的方法中提取，initForm('formValidate',1362958)
+                            var htmlDoc = getProductHtmlByPage(asin, siteMap[site], cookie, --curPage);
+                            //获取产品id，从button的方法中提取，initForm('formValidate',*******)
                             var productTrSet = htmlDoc.DocumentNode.SelectNodes("//tbody/tr");
                             foreach (var productTr in productTrSet) {
                                 var productTdSet = productTr.SelectNodes("./td");
-                                var orderNo = productTdSet[3].InnerText.Trim(); //第4列为订单号
-                                if (orderNo != "") {
-                                    var button = productTr.SelectSingleNode(".//i-button");
-                                    var clickMethod = button.GetAttributeValue("@click", "");
-                                    if (clickMethod.StartsWith("initForm")) {
-                                        if (button.InnerText == "爱心捐赠感言") { //判断是否已填写过评价
-                                            idStack.Push(clickMethod.Substring("initForm('formValidate',".Length, 7));
-                                            orderNoStack.Push(orderNo);
+                                if (productTdSet.Count > 4) {
+                                    var orderNo = productTdSet[3].InnerText.Trim(); //第4列为订单号
+                                    if (orderNo != "") {
+                                        var button = productTr.SelectSingleNode(".//i-button");
+                                        var clickMethod = button.GetAttributeValue("@click", "");
+                                        if (clickMethod.StartsWith("initForm")) {
+                                            if (button.InnerText == "爱心捐赠感言") { //判断是否已填写过评价
+                                                idStack.Push(clickMethod.Substring("initForm('formValidate',".Length, 7));
+                                                orderNoStack.Push(orderNo);
+                                            }
                                         }
                                     }
                                 }
@@ -310,6 +313,8 @@ namespace FillWebsite {
                             }
                             csrfToken = csrfMeta.GetAttributeValue("content", "");
                         }
+                        if (idStack.Count <= 0)
+                            continue;
                         wsSave.Cells[saveRowIndex, 1] = orderNoStack.Pop();
                         //填写评价
                         string url = "http://www.dagobuy.com/evaluate";
@@ -329,7 +334,7 @@ namespace FillWebsite {
                         var contentNoTrans = content.Replace("\\", "\\\\").Replace("\t", "\\t").Replace("\v", "\\v")
                             .Replace("\n", "\\n").Replace("\"", "\\\"").Replace("\0", "\\0")
                             .Replace("\a", "\\a").Replace("\b", "\\b").Replace("\r", "\\r").Replace("\f", "\\f");
-                        string requestStr = "{\"id\":1513826" + ",\"star\":5,"
+                        string requestStr = "{\"id\":" + id + ",\"star\":5,"
                             + "\"title\":\"" + titleNoTrans + "\","
                             + "\"content\":\"" + contentNoTrans + "\","
                             + "\"epic\":[],\"evideo\":[]}";
@@ -363,9 +368,8 @@ namespace FillWebsite {
                         } finally {
                             request.Abort();
                         }
-                        this.Invoke(new Action(() => processLabel1.Text = "进度：" + curRow + "/" + rowCount));
-                        curPage--;
                     }
+                    this.Invoke(new Action(() => processLabel1.Text = "进度：" + curRow + "/" + rowCount));
                 }
                 //if (idStack.Count > 0 || curPage > 1) { //网页上还有未评价的订单
                 //    wsSave.Cells[saveRowIndex, 6] = "页面上还有未评价的订单。订单第" + curPage + "页。";
@@ -439,10 +443,13 @@ namespace FillWebsite {
                     var productTrSet = htmlDoc.DocumentNode.SelectNodes("//tbody/tr");
                     for (int i = productTrSet.Count - 1; i >= 0; i--) {
                         var productTr = productTrSet[i];
-                        var orderNo = productTr.SelectNodes("./td")[3].InnerText.Trim();
-                        if (orderNo != "") {
-                            wsSave.Cells[saveRowIndex, 1] = orderNo;
-                            saveRowIndex++;
+                        var productTdSet = productTr.SelectNodes("./td");
+                        if (productTdSet.Count > 4) {
+                            var orderNo = productTdSet[3].InnerText.Trim();
+                            if (orderNo != "") {
+                                wsSave.Cells[saveRowIndex, 1] = orderNo;
+                                saveRowIndex++;
+                            }
                         }
                     }
                 }
